@@ -24,25 +24,22 @@ void add_history(char* unused) {}
 
 int main(int argc, char** argv) {
   mpc_parser_t* Number   = mpc_new("number");
-  mpc_parser_t* Double   = mpc_new("double");
-  mpc_parser_t* Integer  = mpc_new("integer");
-  mpc_parser_t* Operator = mpc_new("operator");
+  mpc_parser_t* Symbol   = mpc_new("symbol");
+  mpc_parser_t* Sexpr    = mpc_new("sexpr");
   mpc_parser_t* Expr     = mpc_new("expr");
   mpc_parser_t* Igor     = mpc_new("igor");
 
   mpca_lang(MPC_LANG_DEFAULT,
-    "                                                                    \
-      integer  : /[0-9]+/ ;                                              \
-      double   : /[0-9]+\\.[0-9]*/ ;                                     \
-      number   : <double> | <integer> ;                                  \
-      operator : '+' | '-' | '*' | '/' | '%' | '^' | \"min\" | \"max\" ; \
-      expr     : <number> | '(' <operator> <expr>+ ')' ;                 \
-      igor     : /^/ <operator> <expr>+ /$/ ;                            \
+    "                                          \
+      number : /-?[0-9]+/ ;                    \
+      symbol : '+' | '-' | '*' | '/' ;         \
+      sexpr  : '(' <expr>* ')' ;               \
+      expr   : <number> | <symbol> | <sexpr> ; \
+      igor   : /^/ <expr>* /$/ ;               \
     ",
-    Integer, Double, Number, Operator, Expr, Igor);
+    Number, Symbol, Sexpr, Expr, Igor);
 
-
-  puts("Igor Version 0.0.0.0.1");
+  puts("Igor Version 0.0.1");
 
   while(1) {
     char* input = readline("igor> ");
@@ -54,9 +51,9 @@ int main(int argc, char** argv) {
     add_history(input);
     mpc_result_t r;
     if(mpc_parse("<stdin>", input, Igor, &r)) {
-      ival result = eval(r.output);
-      ival_println(result);
-      mpc_ast_delete(r.output);
+      ival* x = ival_eval(ival_read(r.output));
+      ival_println(x);
+      ival_del(x);
     } else {
       mpc_err_print(r.error);
       mpc_err_delete(r.error);
@@ -64,6 +61,6 @@ int main(int argc, char** argv) {
     free(input);
   }
 
-  mpc_cleanup(6, Integer, Double, Number, Operator, Expr, Igor);
+  mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Igor);
   return 0;
 }
