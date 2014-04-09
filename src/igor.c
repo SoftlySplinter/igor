@@ -26,18 +26,20 @@ int main(int argc, char** argv) {
   mpc_parser_t* Number   = mpc_new("number");
   mpc_parser_t* Symbol   = mpc_new("symbol");
   mpc_parser_t* Sexpr    = mpc_new("sexpr");
+  mpc_parser_t* Qexpr    = mpc_new("qexpr");
   mpc_parser_t* Expr     = mpc_new("expr");
   mpc_parser_t* Igor     = mpc_new("igor");
 
   mpca_lang(MPC_LANG_DEFAULT,
-    "                                          \
-      number : /-?[0-9]+/ ;                    \
-      symbol : '+' | '-' | '*' | '/' ;         \
-      sexpr  : '(' <expr>* ')' ;               \
-      expr   : <number> | <symbol> | <sexpr> ; \
-      igor   : /^/ <expr>* /$/ ;               \
+    "                                                    \
+    number : /-?[0-9]+/ ; \
+    symbol : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | '+' | '-' | '*' | '/' ; \
+    sexpr  : '(' <expr>* ')' ; \
+    qexpr  : '{' <expr>* '}' ; \
+    expr   : <number> | <symbol> | <sexpr> | <qexpr> ; \
+    igor   : /^/ <expr>* /$/ ; \
     ",
-    Number, Symbol, Sexpr, Expr, Igor);
+    Number, Symbol, Sexpr, Qexpr, Expr, Igor);
 
   puts("Igor Version 0.0.1");
 
@@ -61,6 +63,6 @@ int main(int argc, char** argv) {
     free(input);
   }
 
-  mpc_cleanup(5, Number, Symbol, Sexpr, Expr, Igor);
+  mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Igor);
   return 0;
 }

@@ -18,7 +18,7 @@ typedef struct ival {
 
 } ival;
 
-enum { IVAL_ERR, IVAL_NUM, IVAL_SYM, IVAL_SEXPR };
+enum { IVAL_ERR, IVAL_NUM, IVAL_SYM, IVAL_SEXPR, IVAL_QEXPR };
 
 enum { IERR_DIV_ZERO, IERR_BAD_OP, IERR_BAD_NUM };
 
@@ -33,6 +33,9 @@ ival* ival_sym(char *s);
 
 /* A pointer to a new empty Sexpr ival */
 ival* ival_sexpr(void);
+
+/* A pointer to a new empty Qexpr ival */
+ival* ival_qexpr(void);
 
 /* Free an ival */
 void ival_del(ival* v);
@@ -51,7 +54,21 @@ ival* ival_pop(ival* v, int i);
 
 ival* ival_take(ival* v, int i);
 
+ival* builtin(ival* a, char* op);
+
 ival* builtin_op(ival* a, char* op);
+
+ival* builtin_head(ival* a);
+
+ival* builtin_tail(ival* a);
+
+ival* builtin_list(ival* a);
+
+ival* builtin_eval(ival* a);
+
+ival* builtin_join(ival* a);
+
+ival* ival_join(ival* x, ival* y);
 
 void ival_expr_print(ival* v, char open, char close);
 

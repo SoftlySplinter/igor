@@ -1,6 +1,9 @@
 #include <stdlib.h>
 #include "../lib/mpc.h"
 #include "parse.h"
+
+#define LASSERT(args, cond, err) if (!(cond)) { ival_del(args); return ival_err(err); }
+
 /* Construct a pointer to a new Number ival */ 
 ival* ival_num(long x) {
   ival* v = malloc(sizeof(ival));
@@ -36,6 +39,15 @@ ival* ival_sexpr(void) {
   return v;
 }
 
+/* A pointer to a new empty Qexpr ival */
+ival* ival_qexpr(void) {
+  ival* v = malloc(sizeof(ival));
+  v->type = IVAL_QEXPR;
+  v->count = 0;
+  v->cell = NULL;
+  return v;
+}
+
 void ival_del(ival* v) {
 
   switch (v->type) {
@@ -46,8 +58,9 @@ void ival_del(ival* v) {
     case IVAL_ERR: free(v->err); break;
     case IVAL_SYM: free(v->sym); break;
 
-    /* If Sexpr then delete all elements inside */
+    /* If Sexpr or Qexpr then delete all elements inside */
     case IVAL_SEXPR:
+    case IVAL_QEXPR:
       for (int i = 0; i < v->count; i++) {
         ival_del(v->cell[i]);
       }
@@ -83,6 +96,7 @@ ival* ival_read(mpc_ast_t* t) {
   ival* x = NULL;
   if (strcmp(t->tag, ">") == 0) { x = ival_sexpr(); } 
   if (strstr(t->tag, "sexpr"))  { x = ival_sexpr(); }
+  if (strstr(t->tag, "qexpr"))  { x = ival_qexpr(); }
 
   /* Fill this list with any valid expression contained within */
   for (int i = 0; i < t->children_num; i++) {
@@ -123,7 +137,7 @@ ival* ival_eval_sexpr(ival* v) {
   }
 
   /* Call builtin with operator */
-  ival* result = builtin_op(v, f->sym);
+  ival* result = builtin(v, f->sym);
   ival_del(f);
   return result;
 }
@@ -154,6 +168,17 @@ ival* ival_take(ival* v, int i) {
   ival* x = ival_pop(v, i);
   ival_del(v);
   return x;
+}
+
+ival* builtin(ival* a, char* func) {
+  if (strcmp("list", func) == 0) { return builtin_list(a); }
+  if (strcmp("head", func) == 0) { return builtin_head(a); }
+  if (strcmp("tail", func) == 0) { return builtin_tail(a); }
+  if (strcmp("join", func) == 0) { return builtin_join(a); }
+  if (strcmp("eval", func) == 0) { return builtin_eval(a); }
+  if (strstr("+-/*", func)) { return builtin_op(a, func); }
+  ival_del(a);
+  return ival_err("Unknown Function!");
 }
 
 ival* builtin_op(ival* a, char* op) {
@@ -200,6 +225,68 @@ ival* builtin_op(ival* a, char* op) {
   return x;
 }
 
+ival* builtin_head(ival* a) {
+  LASSERT(a, (a->count == 1                 ), "Function 'head' passed too many arguments!");
+  LASSERT(a, (a->cell[0]->type == IVAL_QEXPR), "Function 'head' passed incorrect type!");
+  LASSERT(a, (a->cell[0]->count != 0        ), "Function 'head' passed {}!");
+
+  ival* v = ival_take(a, 0);  
+  while (v->count > 1) { ival_del(ival_pop(v, 1)); }
+  return v;
+}
+
+ival* builtin_tail(ival* a) {
+  LASSERT(a, (a->count == 1                 ), "Function 'tail' passed too many arguments!");
+  LASSERT(a, (a->cell[0]->type == IVAL_QEXPR), "Function 'tail' passed incorrect type!");
+  LASSERT(a, (a->cell[0]->count != 0        ), "Function 'tail' passed {}!");
+
+  ival* v = ival_take(a, 0);  
+  ival_del(ival_pop(v, 0));
+  return v;
+}
+
+ival* builtin_list(ival* a) {
+  a->type = IVAL_QEXPR;
+  return a;
+}
+
+ival* builtin_eval(ival* a) {
+  LASSERT(a, (a->count == 1                 ), "Function 'eval' passed too many arguments!");
+  LASSERT(a, (a->cell[0]->type == IVAL_QEXPR), "Function 'eval' passed incorrect type!");
+
+  ival* x = ival_take(a, 0);
+  x->type = IVAL_SEXPR;
+  return ival_eval(x);
+}
+
+ival* builtin_join(ival* a) {
+
+  for (int i = 0; i < a->count; i++) {
+    LASSERT(a, (a->cell[i]->type == IVAL_QEXPR), "Function 'join' passed incorrect type.");
+  }
+
+  ival* x = ival_pop(a, 0);
+
+  while (a->count) {
+    x = ival_join(x, ival_pop(a, 0));
+  }
+
+  ival_del(a);
+  return x;
+}
+
+ival* ival_join(ival* x, ival* y) {
+
+  /* For each cell in 'y' add it to 'x' */
+  while (y->count) {
+    x = ival_add(x, ival_pop(y, 0));
+  }
+
+  /* Delete the empty 'y' and return 'x' */
+  ival_del(y);  
+  return x;
+}
+
 void ival_expr_print(ival* v, char open, char close) {
   putchar(open);
   for (int i = 0; i < v->count; i++) {
@@ -221,6 +308,7 @@ void ival_print(ival* v) {
     case IVAL_ERR:   printf("Error: %s", v->err); break;
     case IVAL_SYM:   printf("%s", v->sym); break;
     case IVAL_SEXPR: ival_expr_print(v, '(', ')'); break;
+    case IVAL_QEXPR: ival_expr_print(v, '{', '}'); break;
   }
 }
 
