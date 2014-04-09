@@ -31,17 +31,20 @@ int main(int argc, char** argv) {
   mpc_parser_t* Igor     = mpc_new("igor");
 
   mpca_lang(MPC_LANG_DEFAULT,
-    "                                                    \
-    number : /-?[0-9]+/ ; \
-    symbol : \"list\" | \"head\" | \"tail\" | \"join\" | \"eval\" | '+' | '-' | '*' | '/' ; \
-    sexpr  : '(' <expr>* ')' ; \
-    qexpr  : '{' <expr>* '}' ; \
-    expr   : <number> | <symbol> | <sexpr> | <qexpr> ; \
+    "                                                   \
+    number : /-?[0-9]+/ ;                               \
+    symbol : /[a-zA-Z0-9_+\\-*\\/\\\\=<>!&]+/ ;         \
+    sexpr  : '(' <expr>* ')' ;                          \
+    qexpr  : '{' <expr>* '}' ;                          \
+    expr   : <number> | <symbol> | <sexpr> | <qexpr> ;  \
     igor   : /^/ <expr>* /$/ ; \
     ",
     Number, Symbol, Sexpr, Qexpr, Expr, Igor);
 
   puts("Igor Version 0.0.1");
+
+  ienv* e = ienv_new();
+  ienv_add_builtins(e);
 
   while(1) {
     char* input = readline("igor> ");
@@ -53,7 +56,7 @@ int main(int argc, char** argv) {
     add_history(input);
     mpc_result_t r;
     if(mpc_parse("<stdin>", input, Igor, &r)) {
-      ival* x = ival_eval(ival_read(r.output));
+      ival* x = ival_eval(e, ival_read(r.output));
       ival_println(x);
       ival_del(x);
     } else {
@@ -62,6 +65,7 @@ int main(int argc, char** argv) {
     }
     free(input);
   }
+  ienv_del(e);
 
   mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Igor);
   return 0;
