@@ -3,12 +3,12 @@
 
 typedef struct _ival {
   int type;
-  long num;
+  double num;
   int err;
 } ival;
 
 
-enum { IVAL_LONG, IVAL_DOUBLE, IVAL_ERR };
+typedef enum { IVAL_LONG, IVAL_DOUBLE, IVAL_ERR } type;
 
 enum { IERR_DIV_ZERO, IERR_BAD_OP, IERR_BAD_NUM};
 
